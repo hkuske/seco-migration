@@ -21,8 +21,7 @@ CREATE TABLE [dbo].[Staging_Attachments_JP](
 	[SalesRep] [nvarchar](100) NULL,
 	[SECO_Salesman] [nvarchar](50) NULL,
 	[Subject] [nvarchar](200) NULL,
-	[Subsidiary] [nvarchar](50) NULL,
-	[id] [int] IDENTITY(1,1) NOT NULL
+	[Subsidiary] [nvarchar](50) NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
 
