@@ -4,7 +4,7 @@
 // 
 // 
 //////////////////////////////////////////////////////////
-
+die();
 $country = "";
 if (substr($argv[1],0,8) == 'country='){
 	$country=substr($argv[1],8);
@@ -21,6 +21,11 @@ if ($country == ""){
 	die();
 }
 
+$start=1;
+if ($_REQUEST['start'] != ""){
+	$start = $_REQUEST['start'];
+}
+
 //new_way, call function with php -f note_full_a.php&country=xx
 $in_file = $country."_notes_dump.csv";
 
@@ -32,19 +37,10 @@ $in_file = $dir.$in_file;
 $username = "jim";
 $password = "jim";
 $migrator = "1"; 
-
-$username = "datam";
-$password = "bgG14Cz5ZJQd26p";
-$migrator = "967d9858-549c-11ea-8670-0622da69c7ea"; //PROD + TEST
-
-$base_url = "http://localhost/demo910ent/rest/v10";
-$base_url = "https://secotoolsab-prod.sugaropencloud.eu/rest/v10";  //prod
-$base_url = "https://secotoolsab-test.sugaropencloud.eu/rest/v10";  //test
-
+$base_url = "http://localhost/sugarent1110/rest/v10";
 $platform = "migration";
-$platform = "attachments";
 
-
+if(file_exists('auth.php')) include 'auth.php';
 
 ini_set('max_execution_time', 0);
 $script_start = time();
@@ -92,9 +88,8 @@ if (($handle = fopen($in_file, "r")) !== FALSE) {
 			$max_lines--;
 		}
 		
-		echo "<hr>";
-		echo bin2hex($datas);
-		echo "<hr>";
+//		echo bin2hex($datas);
+//		echo "<hr>";
 		
 		$data = explode("\t",$datas);
 
@@ -108,12 +103,14 @@ if (($handle = fopen($in_file, "r")) !== FALSE) {
 		
 		$row++;
 
-//EXIT			
-//		if ($row > 4) break;	// STOP for TEST
+//EXIT	
+//		if ($row > 100) break;	// STOP for TEST
+		if ($row < $start) continue;	// STOP 
+//		if ($row > ($start+500)) break;	// STOP 
 //EXIT			
 
 		$num = count($data);
-        $DEBUG = "$row|$num|";
+        $DEBUG = "<hr>$row|$num|";
         for ($c=0; $c < $num; $c++) {
             $DEBUG .= $data[$c] . "|";
         }
@@ -173,10 +170,10 @@ if (($handle = fopen($in_file, "r")) !== FALSE) {
 			"offset" => 0,
 			"fields" => "id",
 		);
-		$DEBUG .= "## SEARCH NOTE: ".print_r($note_arguments,true)." ##</br>\n";
+//		$DEBUG .= "## SEARCH NOTE: ".print_r($note_arguments,true)." ##</br>\n";
 	
 		$note_response = call($url, $oauth2_token_response->access_token, 'GET', $note_arguments);
-		$DEBUG .= "## SEARCH RESULT: ".print_r($note_response,true)." ##</br>\n";
+//		$DEBUG .= "## SEARCH RESULT: ".print_r($note_response,true)." ##</br>\n";
 		
 		if (count($note_response->records) > 0) {
 			$note_id = $note_response->records[0]->id;
@@ -184,6 +181,7 @@ if (($handle = fopen($in_file, "r")) !== FALSE) {
 		
 		if ($note_id != "") {
 
+			$DEBUG .= "## NOTE FOUND: ".$blob_key." # ".$note_id." ##</br>\n";
 			//////////////////////////////////////////////////////////   			
 			//Search account record - GET /<module>/
 			//////////////////////////////////////////////////////////   			
@@ -201,10 +199,10 @@ if (($handle = fopen($in_file, "r")) !== FALSE) {
 				"offset" => 0,
 				"fields" => "id",
 			);
-			$DEBUG .= "## SEARCH ACCOUNT: ".print_r($acc_arguments,true)." ##</br>\n";
+//			$DEBUG .= "## SEARCH ACCOUNT: ".print_r($acc_arguments,true)." ##</br>\n";
 	
 			$acc_response = call($url, $oauth2_token_response->access_token, 'GET', $acc_arguments);
-			$DEBUG .= "## SEARCH RESULT: ".print_r($acc_response,true)." ##</br>\n";
+//			$DEBUG .= "## SEARCH RESULT: ".print_r($acc_response,true)." ##</br>\n";
 		
 			if (count($acc_response->records) > 0) {
 				$account_id = $acc_response->records[0]->id;
@@ -227,10 +225,16 @@ if (($handle = fopen($in_file, "r")) !== FALSE) {
 					"parent_type" => "Accounts",
 					"parent_id" => $account_id,
 				);
-				$DEBUG .= "## SET PARENT: ".print_r($note_arguments2,true)." ##</br><hr>\n";
+//				$DEBUG .= "## SET PARENT: ".print_r($note_arguments2,true)." ##</br><hr>\n";
 				$note_response2 = call($url, $oauth2_token_response->access_token, 'PUT', $note_arguments2);
 			
+			} else {
+				$DEBUG .= "##: ".$note_id." ## ".$prev_cust." ## -not found- ##</br>\n";
+				
 			}
+			
+		} else {
+			$DEBUG .= "## NOTE NOT FOUND: ".$blob_key." ##</br>\n";
 			
 		}	
         echo $DEBUG; $DEBUG="";

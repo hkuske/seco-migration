@@ -4,8 +4,10 @@
 // the function must run in UNIX
 // Windows is not able to upload non-ANSI files
 //////////////////////////////////////////////////////////
+//die();
 
 $country = "";
+$country = "JP";
 if (substr($argv[1],0,8) == 'country='){
 	$country=substr($argv[1],8);
 }
@@ -34,21 +36,14 @@ $dir = ".\\data\\";
 $dir = "./data/";
 $in_file = $dir.$in_file;
 
+
 $username = "jim";
 $password = "jim";
 $migrator = "1"; 
-
-$username = "datam";
-$password = "bgG14Cz5ZJQd26p";
-$migrator = "967d9858-549c-11ea-8670-0622da69c7ea"; //ZTEST + PROD
-
-$base_url = "http://localhost/demo930ent/rest/v10";
-$base_url = "https://secotoolsab-test.sugaropencloud.eu/rest/v10";  //test
-$base_url = "https://secotoolsab-prod.sugaropencloud.eu/rest/v10";  //prod
-
-$platform = "attachments";
+$base_url = "http://localhost/sugarent1110/rest/v10";
 $platform = "migration";
 
+if(file_exists('auth.php')) include 'auth.php';
 
 ini_set('max_execution_time', 0);
 $script_start = time();
@@ -151,6 +146,8 @@ if (($handle = fopen($in_file, "r")) !== FALSE) {
     6       "il_prevcustnum": "",
             "il_customernumber": "",
     0       "il_blobkey": "",
+NEW:	
+	4       id (physical filename without ext)
 */
 
 // NO Header
@@ -167,6 +164,7 @@ if (($handle = fopen($in_file, "r")) !== FALSE) {
 			"filter" => array(
 				array(
 					"il_blobkey" => $data[0]					   
+//test				"il_blobkey_c" => $data[0]					   
 				)
 			),
 			"max_num" => 1,
@@ -176,17 +174,18 @@ if (($handle = fopen($in_file, "r")) !== FALSE) {
 //		$DEBUG .= "## SEARCH NOTE: ".print_r($note_search,true)." ##</br>\n";
 	
 		$note_respsearch = call($url, $oauth2_token_response->access_token, 'GET', $note_search);
-//		$DEBUG .= "## SEARCH RESULT: ".print_r($note_respsearch,true)." ##</br>\n";
+		$DEBUG .= "## SEARCH RESULT: ".print_r($note_respsearch,true)." ##</br>\n";
 		
 		if (count($note_respsearch->records) > 0) {
 			$note_id = $note_respsearch->records[0]->id;
 			$DEBUG .= "NOTE FOUND ". $note_id ." ##</br>\n";
-			continue;  // Note already exists
+			continue;  // Note already exists - do nothing
 		}		
 		
         //////////////////////////////////////////////////////////   			
 		//Create note record - POST /<module>/:record
         //////////////////////////////////////////////////////////   			
+if ($note_id == "") {
 
 		$url = $base_url . "/Notes";
 		
@@ -196,10 +195,11 @@ if (($handle = fopen($in_file, "r")) !== FALSE) {
 		$note_arguments = array(
 
 			"il_prevcustnum" => $data[6],
-			"il_blobkey" => $data[0],
 			"infolink_flag" => true,
 			"il_salesrep" => $data[7],
 			"seco_salesman" => $data[10],
+			"il_blobkey" => $data[0],
+//test		"il_blobkey_c" => $data[0],
 	
 			"set_created_by" => true,
 			"description" => $data[5],
@@ -214,21 +214,26 @@ if (($handle = fopen($in_file, "r")) !== FALSE) {
             "my_favorite" => false,
 			"modified_user_id" => $migrator,
 			"created_by" => $migrator,
+		    "erased_fields" => true,
 		);
-		
-		if ($data[1] != 0){
+		if ($data[1] != 0){  // len > 0
 		   $note_arguments["file_size"] = $data[1];
 		   $note_arguments["filename"] = $data[2];
 		   $note_arguments["file_ext"] = $data[3];
+		   
+		   $note_arguments["attachment_flag"] = 1;
+		   $note_arguments["file_mime_type"] = $data[3];
+		   
 		}
 //		$DEBUG .= "## CREATE NOTE: ".print_r($note_arguments,true)." ##</br>\n";
 
 		$note_response = call($url, $oauth2_token_response->access_token, 'POST', $note_arguments);
 //		$DEBUG .= "## CREATED: ".print_r($note_response,true)." ##</br>\n";
-		$DEBUG .= "## CREATED RESPONSE: ".$note_response->record->id . "<br>\n";
+		$DEBUG .= "## CREATED RESPONSE: ".$note_response->id . "<br>\n";
 
         $note_id = $note_response->id;
 		$prev_cust = $data[6];
+}
 		
 		if ($note_id != "") {
 			
@@ -243,13 +248,22 @@ if (($handle = fopen($in_file, "r")) !== FALSE) {
 			//Upload note file - POST /Notes/<id>/file/filename
 			//////////////////////////////////////////////////////////   			
 			
-			if ($data[1] != 0) {
+			if ($data[1] != 0) { // len > 0
 				$url = $base_url . "/Notes/".$note_id."/file/filename";
 				
+				$file_name = $dir.'/'. $data[4];  // new naming schema
+				if ($data[3] != "") $file_name .= '.' . $data[3]; // add extension
+				$filepath = realpath($file_name);
+				$DEBUG .= "## FILEPATH: ".$filepath . "<br>\n";
+				
 				if ((version_compare(PHP_VERSION, '5.5') >= 0)) {
-					$filedata = new CURLFile(realpath($dir.$data[0]),"",$data[2]);
+					$DEBUG .= "##CURLFILE##\n<br>";
+					$filedata = new CURLFile($filepath,"",$data[2]);
+    				$DEBUG .= "## FILEDATA: ".print_r($filedata,true) . "<br>\n";
 				} else {
-					$filedata = '@'.realpath($dir.$data[0]);
+					$DEBUG .= "##REALPATH##\n<br>";
+					$filedata = '@'.$filepath;
+				    $DEBUG .= "## FILEDATA: ".$filedata . "<br>\n";
 				}
 				$file_arguments = array(
 					"format" => "sugar-html-json",
@@ -257,10 +271,10 @@ if (($handle = fopen($in_file, "r")) !== FALSE) {
 					"oauth_token" => $oauth2_token_response->access_token,
 					'filename' => $filedata,
 				);
-//				$DEBUG .= "## UPLOAD FILE: ".$note_id. "#" .print_r($file_arguments,true) . "<br>\n";
+				$DEBUG .= "## UPLOAD FILE: ".$note_id. "#" .print_r($file_arguments,true) . "<br>\n";
 				$file_response = call($url, $oauth2_token_response->access_token, 'POST', $file_arguments, false,false,true);
 //				$DEBUG .= "## UPLOAD RESPONSE: ".print_r($file_response,true) . "<br>\n";
-				$DEBUG .= "## UPLOAD RESPONSE: ".$file_response->record->id . "<br>\n";
+				$DEBUG .= "## UPLOAD RESPONSE: ".print_r($file_response->filename,true) . "<br>\n";
 				$DEBUG .= "<hr>";	
 			}
 		}	

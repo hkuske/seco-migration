@@ -6,7 +6,7 @@
 // This function searchs the already existing notes
 // and restarts the upload of the files
 //////////////////////////////////////////////////////////
-
+die();
 $country = "";
 if (substr($argv[1],0,8) == 'country='){
 	$country=substr($argv[1],8);
@@ -34,18 +34,10 @@ $in_file = $dir.$in_file;
 $username = "jim";
 $password = "jim";
 $migrator = "1"; 
-
-$username = "datam";
-$password = "bgG14Cz5ZJQd26p";
-$migrator = "967d9858-549c-11ea-8670-0622da69c7ea"; //ZTEST + PROD
-
-$base_url = "http://localhost/demo930ent/rest/v10";
-$base_url = "https://secotoolsab-prod.sugaropencloud.eu/rest/v10";  //prod
-$base_url = "https://secotoolsab-test.sugaropencloud.eu/rest/v10";  //test
-
-$platform = "attachments";
+$base_url = "http://localhost/sugarent1110/rest/v10";
 $platform = "migration";
 
+if(file_exists('auth.php')) include 'auth.php';
 
 ini_set('max_execution_time', 0);
 $script_start = time();
